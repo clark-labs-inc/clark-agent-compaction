@@ -6,7 +6,7 @@ This crate plans a compaction request and finalizes the model's summary into a
 handoff message plus retained recent user messages. It does not know about HTTP,
 providers, API keys, env vars, persistence, or any specific agent runtime.
 
-The shape follows the useful Codex pattern:
+It is designed to:
 
 - trigger compaction from an approximate token threshold
 - ask a model for a concise handoff over the current transcript
@@ -51,9 +51,3 @@ if let Some(prepared) = prepare_compaction(&transcript, &config, &estimator) {
 
 For runtime-specific transcripts, implement `TranscriptMessage` instead of using
 `PlainMessage`.
-
-## Secret Safety
-
-The crate has no dependencies, performs no I/O, reads no environment variables,
-and contains no credentials or provider identifiers. Secret handling remains the
-caller runtime's responsibility.

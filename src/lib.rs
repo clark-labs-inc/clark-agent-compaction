@@ -21,8 +21,7 @@ pub use truncate::{truncate_to_token_budget, truncate_to_token_budget_with_estim
 /// Runtime-owned transcript adapter.
 ///
 /// Implement this trait for the caller's typed message enum. Rendering should
-/// be deterministic, concise, and model-readable. It must not expose secrets
-/// that are not already safe for the model-visible transcript.
+/// be deterministic, concise, and model-readable.
 pub trait TranscriptMessage {
     /// Render the message into the summarization transcript.
     fn render_for_compaction(&self, out: &mut String);
