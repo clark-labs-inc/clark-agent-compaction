@@ -1,0 +1,18 @@
+[package]
+name = "clark-agent-compaction"
+version = "0.1.0"
+edition = "2021"
+rust-version = "1.82"
+authors = ["Stanislav Kirdey, Clark Labs Inc. <https://github.com/clark-labs-inc>"]
+description = "Provider-agnostic context compaction planner for typed agent transcripts."
+license = "Apache-2.0"
+readme = "README.md"
+repository = "https://github.com/clark-labs-inc/clark-agent-compaction"
+homepage = "https://github.com/clark-labs-inc/clark-agent-compaction"
+documentation = "https://docs.rs/clark-agent-compaction"
+keywords = ["agent", "llm", "context", "compaction", "transcript"]
+categories = ["development-tools"]
+
+[lib]
+name = "clark_agent_compaction"
+path = "src/lib.rs"
