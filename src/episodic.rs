@@ -157,6 +157,40 @@ mod tests {
     }
 
     #[test]
+    fn a_recent_clean_completion_prevents_the_unfinished_turn_trigger() {
+        let pressure = EpisodicCompactionPressure {
+            user_messages_since_boundary: 20,
+            run_completed_since_boundary: 1,
+            user_messages_after_latest_run_completed: 2,
+            conversation_age_days: 1,
+            total_user_messages: 20,
+            ..EpisodicCompactionPressure::default()
+        };
+
+        assert_eq!(
+            episodic_compaction_trigger(&pressure, &EpisodicCompactionConfig::default()),
+            None
+        );
+    }
+
+    #[test]
+    fn context_pressure_is_disabled_until_the_runtime_supplies_a_limit() {
+        let pressure = EpisodicCompactionPressure {
+            estimated_context_tokens: Some(900_000),
+            user_messages_since_boundary: 80,
+            run_completed_since_boundary: 80,
+            conversation_age_days: 1,
+            total_user_messages: 80,
+            ..EpisodicCompactionPressure::default()
+        };
+
+        assert_eq!(
+            episodic_compaction_trigger(&pressure, &EpisodicCompactionConfig::default()),
+            None
+        );
+    }
+
+    #[test]
     fn age_trigger_requires_both_age_and_turn_count() {
         let sparse = EpisodicCompactionPressure {
             conversation_age_days: 60,
