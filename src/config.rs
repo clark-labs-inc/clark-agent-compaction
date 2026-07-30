@@ -11,7 +11,16 @@ Include:
 - Files, commands, errors, tool results, and facts needed to continue
 - Clear next steps
 
-Do not say the task is missing if the transcript contains a user request. Be specific, preserve concrete paths and identifiers, and omit filler."#;
+Do not say the task is missing if the transcript contains a user request. Be specific, preserve concrete paths and identifiers, and omit filler.
+
+When the transcript includes private reasoning excerpts, use them only to retain durable findings, decisions, evidence, failed approaches, uncertainties, and open questions. Do not reproduce chain-of-thought, signatures, encrypted payloads, or moment-to-moment retries."#;
+
+/// The behavior the default prompt requires for private reasoning excerpts.
+/// Exported so callers with a custom prompt can preserve the same contract.
+pub const DEFAULT_PRIVATE_REASONING_SUMMARY_GUIDANCE: &str =
+    "Use private reasoning excerpts only for durable findings, decisions, evidence, failed \
+     approaches, uncertainties, and open questions; never reproduce chain-of-thought, \
+     signatures, encrypted payloads, or moment-to-moment retries.";
 
 /// Default estimated-token threshold for automatic compaction.
 pub const DEFAULT_AUTO_COMPACT_TOKEN_LIMIT: usize = 300_000;
@@ -84,6 +93,30 @@ impl CompactionConfig {
     pub fn enabled(&self) -> bool {
         self.auto_compact_token_limit != usize::MAX
     }
+}
+
+/// Add the private-reasoning handoff contract to a caller-supplied prompt.
+///
+/// The default prompt already contains this instruction. Callers that replace
+/// `compaction_prompt` should use this helper before building a request so
+/// readable reasoning excerpts stay a source of durable findings rather than
+/// an invitation to replay a trace.
+pub fn with_private_reasoning_summary_guidance(config: &CompactionConfig) -> CompactionConfig {
+    if config
+        .compaction_prompt
+        .contains("private reasoning excerpts")
+    {
+        return config.clone();
+    }
+
+    let mut enriched = config.clone();
+    if !enriched.compaction_prompt.trim_end().is_empty() {
+        enriched.compaction_prompt.push_str("\n\n");
+    }
+    enriched
+        .compaction_prompt
+        .push_str(DEFAULT_PRIVATE_REASONING_SUMMARY_GUIDANCE);
+    enriched
 }
 
 impl Default for CompactionConfig {

@@ -1,27 +1,43 @@
 //! Provider-agnostic context compaction primitives for agent transcripts.
 //!
 //! The crate owns the deterministic parts of compaction:
-//! threshold checks, transcript rendering budgets, recent user-message
-//! retention, and summary handoff finalization. Callers own provider I/O,
-//! persistence, cancellation, telemetry, and conversion back into their typed
-//! message model.
+//! checkpoint threshold checks, transcript rendering budgets, recent
+//! user-message retention, summary handoff finalization, and policy for
+//! append-only episodic histories. Callers own provider I/O, persistence,
+//! cancellation, telemetry, and conversion back into their typed message model.
 
 mod config;
+mod episodic;
 mod plain;
+mod reasoning;
 mod truncate;
 
 pub use config::{
     CharHeuristic, CompactionConfig, TokenEstimator, DEFAULT_AUTO_COMPACT_TOKEN_LIMIT,
     DEFAULT_COMPACTION_PROMPT, DEFAULT_COMPACT_REQUEST_TOKEN_LIMIT,
-    DEFAULT_RECENT_USER_TOKEN_BUDGET, DEFAULT_SUMMARY_PREFIX,
+    DEFAULT_PRIVATE_REASONING_SUMMARY_GUIDANCE, DEFAULT_RECENT_USER_TOKEN_BUDGET,
+    DEFAULT_SUMMARY_PREFIX, with_private_reasoning_summary_guidance,
+};
+pub use episodic::{
+    EpisodicCompactionConfig, EpisodicCompactionPressure, EpisodicCompactionTrigger,
+    episodic_compaction_trigger,
 };
 pub use plain::{PlainMessage, PlainToolCall};
+pub use reasoning::{
+    append_private_reasoning_for_compaction, DEFAULT_PRIVATE_REASONING_EXCERPT_CHARS,
+};
 pub use truncate::{truncate_to_token_budget, truncate_to_token_budget_with_estimator};
 
 /// Runtime-owned transcript adapter.
 ///
 /// Implement this trait for the caller's typed message enum. Rendering should
 /// be deterministic, concise, and model-readable.
+///
+/// If the source transcript carries private reasoning, render only readable
+/// text through [`append_private_reasoning_for_compaction`]. The compaction
+/// prompt directs the summarizer to retain durable findings, not raw
+/// chain-of-thought. Opaque, signed, or encrypted replay payloads must not be
+/// rendered.
 pub trait TranscriptMessage {
     /// Render the message into the summarization transcript.
     fn render_for_compaction(&self, out: &mut String);

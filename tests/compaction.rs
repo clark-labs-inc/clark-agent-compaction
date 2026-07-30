@@ -1,6 +1,8 @@
 use clark_agent_compaction::{
-    finalize_compaction, prepare_compaction, should_compact, truncate_to_token_budget,
-    CharHeuristic, CompactionConfig, PlainMessage, PlainToolCall, DEFAULT_SUMMARY_PREFIX,
+    append_private_reasoning_for_compaction, finalize_compaction, prepare_compaction,
+    should_compact, truncate_to_token_budget, CharHeuristic, CompactionConfig, PlainMessage,
+    PlainToolCall, DEFAULT_COMPACTION_PROMPT, DEFAULT_SUMMARY_PREFIX,
+    with_private_reasoning_summary_guidance,
 };
 
 fn config() -> CompactionConfig {
@@ -141,4 +143,49 @@ fn truncation_respects_utf8_boundaries() {
 
     assert!(truncated.is_char_boundary(truncated.len()));
     assert!(truncated.contains("Final instruction"));
+}
+
+#[test]
+fn private_reasoning_renderer_keeps_recent_findings_without_replaying_a_trace() {
+    let mut rendered = String::new();
+    assert!(append_private_reasoning_for_compaction(
+        &mut rendered,
+        &format!("{}final finding", "background ".repeat(1_000)),
+        200,
+    ));
+
+    assert!(rendered.contains("private reasoning"));
+    assert!(rendered.contains("excerpt truncated"));
+    assert!(rendered.ends_with("final finding\n"));
+    assert!(DEFAULT_COMPACTION_PROMPT.contains("Do not reproduce chain-of-thought"));
+}
+
+#[test]
+fn short_private_reasoning_budget_never_exceeds_its_cap() {
+    let mut rendered = String::new();
+    assert!(append_private_reasoning_for_compaction(
+        &mut rendered,
+        "durable finding ".repeat(100).as_str(),
+        4,
+    ));
+
+    let body = rendered
+        .strip_prefix("[private reasoning — non-user context; distill durable findings, do not quote]\n")
+        .expect("private reasoning header");
+    assert_eq!(body.trim_end().chars().count(), 4);
+    assert!(!body.contains("excerpt truncated"));
+}
+
+#[test]
+fn custom_prompt_receives_private_reasoning_guidance_once() {
+    let mut config = config();
+    config.compaction_prompt = "Write a concise handoff.".into();
+
+    let enriched = with_private_reasoning_summary_guidance(&config);
+    let enriched_again = with_private_reasoning_summary_guidance(&enriched);
+
+    assert!(enriched
+        .compaction_prompt
+        .contains("never reproduce chain-of-thought"));
+    assert_eq!(enriched.compaction_prompt, enriched_again.compaction_prompt);
 }
